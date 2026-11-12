@@ -1,0 +1,21 @@
+[package]
+name = "fe2o3-still"
+version = "0.1.0"
+edition = "2021"
+authors = ["Geir Isene <g@isene.com>"]
+description = "Test what a terminal program costs while it waits: run it on a pty, send keys, take the terminal away, and count its CPU time and wake-ups."
+license = "Unlicense"
+repository = "https://github.com/isene/still"
+readme = "README.md"
+keywords = ["tui", "pty", "testing", "battery", "terminal"]
+categories = ["development-tools::testing", "command-line-utilities"]
+
+[lib]
+name = "still"
+
+[[bin]]
+name = "still"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2"
