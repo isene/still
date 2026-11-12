@@ -89,9 +89,10 @@ impl Run {
     /// Start the program on a new terminal.
     pub fn start(mut self) -> io::Result<App> {
         let (mut master, mut slave) = (0, 0);
-        let size = libc::winsize { ws_row: self.rows, ws_col: self.cols, ws_xpixel: 0, ws_ypixel: 0 };
-        // SAFETY: openpty fills in the two descriptors or fails.
-        if unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null(), &size) } != 0 {
+        let mut size = libc::winsize { ws_row: self.rows, ws_col: self.cols, ws_xpixel: 0, ws_ypixel: 0 };
+        // SAFETY: openpty fills in the two descriptors or fails. The
+        // casts are for macOS, which takes these two as `*mut`.
+        if unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut::<libc::termios>() as _, &mut size as *mut libc::winsize as _) } != 0 {
             return Err(io::Error::last_os_error());
         }
         // SAFETY: both are fresh descriptors that nothing else owns.
