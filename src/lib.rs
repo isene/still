@@ -171,22 +171,37 @@ impl App {
     /// Read what the program has written and is still writing, until
     /// it has been quiet for `quiet`. Returns the bytes, escape
     /// sequences and all.
+    ///
+    /// A program that never stops writing (a clock, a monitor) would
+    /// keep this waiting for ever, so it gives up after three times
+    /// `quiet` plus one second.
     pub fn output(&mut self, quiet: Duration) -> Vec<u8> {
+        self.read_for(quiet, quiet * 3 + Duration::from_secs(1))
+    }
+
+    /// Read until the program has been quiet for `quiet`, and for no
+    /// longer than `limit` in all.
+    fn read_for(&mut self, quiet: Duration, limit: Duration) -> Vec<u8> {
         let mut out = Vec::new();
         let mut buf = [0u8; 65536];
-        while self.readable(quiet) {
+        let start = Instant::now();
+        loop {
+            let left = limit.saturating_sub(start.elapsed());
+            if !self.readable(quiet.min(left)) { break; }
             let Some(fd) = self.fd() else { break };
             // SAFETY: the buffer is ours and as long as we say.
             let n = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
             // Zero or an error: the program closed its end.
             if n <= 0 { break; }
             out.extend_from_slice(&buf[..n as usize]);
+            if start.elapsed() >= limit { break; }
         }
         out
     }
 
     /// Let the program start up and draw: read and drop its output
-    /// until it has been quiet for `quiet`.
+    /// until it has been quiet for `quiet`. Like [`output`](Self::output),
+    /// it gives up on a program that never goes quiet.
     pub fn settle(&mut self, quiet: Duration) {
         self.output(quiet);
     }
@@ -232,7 +247,7 @@ impl App {
             let left = watch.saturating_sub(start.elapsed());
             if left.is_zero() { break; }
             if self.readable(left) {
-                let n = self.output(Duration::ZERO).len();
+                let n = self.read_for(Duration::ZERO, Duration::ZERO).len();
                 // Readable with nothing to read: the program is gone.
                 if n == 0 { std::thread::sleep(left.min(Duration::from_millis(20))); }
                 written += n;
@@ -261,7 +276,8 @@ impl App {
             if matches!(self.child.try_wait(), Ok(Some(_)) | Err(_)) { return true; }
             if Instant::now() >= end { return false; }
             // Keep its output drained, so a full pipe never holds it up.
-            self.output(Duration::from_millis(10));
+            let left = end.saturating_duration_since(Instant::now());
+            self.read_for(Duration::from_millis(10).min(left), left);
             if self.master.is_none() { std::thread::sleep(Duration::from_millis(10)); }
         }
     }

@@ -78,3 +78,14 @@ fn without_ignore_hangup_the_signal_ends_it() {
     app.hang_up();
     assert!(app.ended(Duration::from_secs(1)));
 }
+
+#[test]
+fn a_program_that_never_goes_quiet_does_not_hang_the_test() {
+    // Prints ten times a second, so one quiet second never comes.
+    let mut app = still::Run::new("sh").args(["-c", "while :; do echo x; sleep 0.1; done"]).start().unwrap();
+    let start = std::time::Instant::now();
+    app.settle(Duration::from_secs(1));
+    assert!(start.elapsed() < Duration::from_secs(5), "{:?}", start.elapsed());
+    let idle = app.idle(Duration::from_secs(1)).unwrap();
+    assert!(idle.written > 0 && idle.wakeups > 0, "{idle:?}");
+}
