@@ -72,7 +72,7 @@ fn main() -> ExitCode {
         Ok(idle) => {
             let secs = idle.watched.as_secs_f64().max(0.001);
             let per_sec = idle.wakeups as f64 / secs;
-            check("waits without waking up", per_sec <= allow as f64, format!("{:.1} wake-ups a second", per_sec));
+            check("waits without waking up", per_sec <= allow as f64, if idle.wakeups > 0 && per_sec < 0.05 { format!("{} wake-ups in {:.0} s", idle.wakeups, secs) } else { format!("{:.1} wake-ups a second", per_sec) });
             check("waits without CPU time", idle.cpu.as_millis() as f64 <= 10.0 * secs.ceil() && (allow > 0 || idle.cpu.is_zero()),
                 format!("{} ms in {:.1} s", idle.cpu.as_millis(), secs));
             check("draws nothing while it waits", idle.written == 0 || allow > 0, format!("{} bytes", idle.written));

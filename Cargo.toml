@@ -1,6 +1,6 @@
 [package]
 name = "fe2o3-still"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Geir Isene <g@isene.com>"]
 description = "Test what a terminal program costs while it waits: run it on a pty, send keys, take the terminal away, and count its CPU time and wake-ups."
